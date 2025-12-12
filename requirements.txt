@@ -1,10 +1,8 @@
-aiogram
-openai
-requests
-beautifulsoup4
-lxml
+aiogram==3.7.0
+openai>=1.30
 numpy
 python-dotenv
-fastapi
-uvicorn
 PyPDF2
+pdfminer.six
+uvicorn
+fastapi
