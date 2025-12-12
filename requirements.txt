@@ -1,0 +1,7 @@
+aiogram==3.4.1
+openai
+python-dotenv
+numpy
+textract
+python-docx
+tiktoken
