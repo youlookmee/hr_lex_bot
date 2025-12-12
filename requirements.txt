@@ -1,0 +1,7 @@
+aiogram==3.7.0
+openai>=1.30.0
+numpy
+python-dotenv
+python-docx
+textract
+colorama
