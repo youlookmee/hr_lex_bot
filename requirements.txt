@@ -1,0 +1,10 @@
+aiogram
+openai
+requests
+beautifulsoup4
+lxml
+numpy
+python-dotenv
+fastapi
+uvicorn
+PyPDF2
