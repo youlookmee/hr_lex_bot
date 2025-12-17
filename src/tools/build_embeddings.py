@@ -1,67 +1,64 @@
 import json
-import pickle
 import os
-from pathlib import Path
+import pickle
+import numpy as np
+from tqdm import tqdm
 from openai import OpenAI
 
-# IMPORTANT:
-# OpenAI API KEY must be set in system environment
-# Example:
-#   setx OPENAI_API_KEY "sk-xxxx"
-#   export OPENAI_API_KEY="sk-xxxx"
+# ----------------------------------
+# CONFIG
+# ----------------------------------
+MODEL = "text-embedding-3-small"
+
+BASE_DIR = "src"
+OUT_DIR = "src/embeddings"
+
+FILES = {
+    "ru": "law_base_ru.json",
+    "uz": "law_base_uz.json",
+}
+
+os.makedirs(OUT_DIR, exist_ok=True)
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-BASE_DIR = Path(__file__).resolve().parents[1]
-LAW_PATH = BASE_DIR / "law_base.json"
-EMB_DIR = BASE_DIR / "embeddings"
+# ----------------------------------
+# BUILD EMBEDDINGS
+# ----------------------------------
+def build(lang: str, filename: str):
+    print(f"\n🔹 Обрабатываю {lang.upper()} ({filename})")
 
-def main():
-    if not LAW_PATH.exists():
-        print(f"[ERROR] law_base.json not found at {LAW_PATH}")
-        return
+    path = os.path.join(BASE_DIR, filename)
 
-    EMB_DIR.mkdir(exist_ok=True)
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
 
-    print("[INFO] Loading law_base.json ...")
-    with open(LAW_PATH, "r", encoding="utf-8") as f:
-        law = json.load(f)
+    vectors = {}
 
-    all_vectors = {}
-    json_vectors = {}
-
-    print(f"[INFO] Total articles: {len(law)}")
-    print("[INFO] Generating embeddings...\n")
-
-    for article_id, content in law.items():
-        ru = content.get("ru", "")
-        uz = content.get("uz", "")
-
-        text = f"ID: {article_id}\nRU:\n{ru}\nUZ:\n{uz}"
+    for article_id, text in tqdm(data.items()):
+        if not text or not isinstance(text, str):
+            continue
 
         emb = client.embeddings.create(
-            model="text-embedding-3-small",
+            model=MODEL,
             input=text
         )
-        vec = emb.data[0].embedding
 
-        all_vectors[article_id] = vec
-        json_vectors[article_id] = vec
+        vectors[article_id] = np.array(
+            emb.data[0].embedding,
+            dtype=np.float32
+        )
 
-        print(f"[EMBEDDED] {article_id}")
+    out_file = os.path.join(OUT_DIR, f"embeddings_{lang}.pkl")
+    with open(out_file, "wb") as f:
+        pickle.dump(vectors, f)
 
-    # Save pickle
-    with open(EMB_DIR / "tk_vectors.pkl", "wb") as f:
-        pickle.dump(all_vectors, f)
+    print(f"✅ Сохранено: {out_file}")
+    print(f"📦 Статей: {len(vectors)}")
 
-    # Save JSON version
-    with open(EMB_DIR / "embeddings.json", "w", encoding="utf-8") as f:
-        json.dump(json_vectors, f, ensure_ascii=False)
-
-    print("\n[OK] Embeddings ready!")
-    print("Saved:")
-    print(f" - {EMB_DIR}/tk_vectors.pkl")
-    print(f" - {EMB_DIR}/embeddings.json")
 
 if __name__ == "__main__":
-    main()
+    for lang, file in FILES.items():
+        build(lang, file)
+
+    print("\n🎉 ГОТОВО. Embeddings созданы.")
